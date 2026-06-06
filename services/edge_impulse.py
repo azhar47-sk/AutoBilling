@@ -327,7 +327,7 @@ async def download_eim(version: int) -> str:
     # EI deployment endpoint for Linux AARCH64
     deploy_url = (
         f"{BASE}/api/{PID}/deployment/download"
-        f"?type=runner-linux-aarch64"
+        f"?type=runner-linux-armv7"
     )
 
     async with httpx.AsyncClient(timeout=300, follow_redirects=True) as client:
