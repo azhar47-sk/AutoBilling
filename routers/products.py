@@ -12,6 +12,9 @@ from schemas import ProductCreate, ProductOut
 from services.auth import require_owner, require_pi
 from config import settings
 
+import tempfile
+from services.storage import upload_image
+
 router = APIRouter(prefix="/products", tags=["products"])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -77,14 +80,12 @@ async def upload_product_images(
     db:    Session = Depends(get_db),
     owner_id: int = Depends(require_owner),
 ):
-
-    logger.info("Upload API HIT")
-    logger.info("Label: %s", label)
-    logger.info("Files received: %s", len(files))
     """
     Accept photo uploads from the owner mobile app.
-    Saves to storage/images/{label}/ for later EI training.
+    Saves locally for EI training + uploads to Cloudinary for display.
     """
+    log.info("Upload API HIT — label: %s, files: %d", label, len(files))
+
     product = db.query(Product).filter(Product.label == label).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -96,14 +97,23 @@ async def upload_product_images(
     for upload in files:
         if not upload.content_type.startswith("image/"):
             continue
-        dest = os.path.join(label_dir, upload.filename)
-        with open(dest, "wb") as f:
-            shutil.copyfileobj(upload.file, f)
-        saved.append(upload.filename)
 
-    # Use the first uploaded image as the product display image
+        # Save locally for Edge Impulse training
+        local_path = os.path.join(label_dir, upload.filename)
+        with open(local_path, "wb") as f:
+            shutil.copyfileobj(upload.file, f)
+
+        # Upload to Cloudinary for display
+        try:
+            url = upload_image(local_path, label, upload.filename)
+            saved.append(url)
+        except Exception as e:
+            log.warning("Cloudinary upload failed: %s", e)
+            saved.append(upload.filename)
+
+    # Set first image as product display image
     if saved and not product.image_url:
-        product.image_url = f"/products/images/{label}/{saved[0]}"
+        product.image_url = saved[0]
         db.commit()
 
     return {"saved": len(saved), "files": saved}
