@@ -1,0 +1,26 @@
+# Environment files — never commit these
+.env
+*.env
+
+# Database
+*.db
+
+# Python
+__pycache__/
+venv/
+*.pyc
+
+# Storage — large files
+backend/storage/
+
+# Android
+*.apk
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# Node
+node_modules/
+
+# Models
+*.eim
