@@ -18,6 +18,7 @@ from services.storage import upload_image
 router = APIRouter(prefix="/products", tags=["products"])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+log = logging.getLogger("products")
 
 # ── Pi reads product catalogue ────────────────────────────────────────────────
 
