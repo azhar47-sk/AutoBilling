@@ -80,7 +80,6 @@ app.include_router(training.router)
 app.include_router(model.router)
 app.include_router(receipts.router)
 
-
-@app.get("/health", methods=["GET", "HEAD"])
-def health():
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health():
     return {"status": "ok"}
