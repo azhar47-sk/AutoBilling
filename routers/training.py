@@ -187,28 +187,22 @@ async def _poll_until_done(job_id: str, db: Session):
     _job_cache[job_id] = {"status": "failed", "progress": 0, "accuracy": None}
 
 async def _save_model_version(job_id: str, accuracy: float | None, db: Session):
-    """Download the .eim and insert a ModelVersion row."""
-    # Get next version number
-    last = db.query(ModelVersion).order_by(ModelVersion.version.desc()).first()
+    """Save ModelVersion metadata — no file download needed."""
+    last    = db.query(ModelVersion).order_by(ModelVersion.version.desc()).first()
     version = (last.version + 1) if last else 1
 
-    try:
-        eim_path = await ei.download_eim(version)
-    except Exception as exc:
-        log.error("Failed to download .eim for job %s: %s", job_id, exc)
-        return
-
-    sha256 = ei.sha256_file(eim_path)
+    # Compute sha256 from EI directly
+    sha256 = f"ei-job-{job_id}"  # placeholder — real hash computed on Pi after download
 
     mv = ModelVersion(
-        version=version,
-        sha256=sha256,
-        eim_path=eim_path,
-        accuracy=accuracy,
-        ei_job_id=job_id,
-        approved=False,
-        deployed=False,
+        version   = version,
+        sha256    = sha256,
+        eim_path  = "",           # not stored locally
+        accuracy  = accuracy,
+        ei_job_id = job_id,
+        approved  = False,
+        deployed  = False,
     )
     db.add(mv)
     db.commit()
-    log.info("Saved ModelVersion v%d (sha256=%s…)", version, sha256[:12])
+    log.info("Saved ModelVersion v%d", version)

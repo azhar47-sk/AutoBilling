@@ -46,25 +46,38 @@ def get_latest_model(
     )
 
 
-@router.get("/download")
-def download_model(
+@router.get("/model/download")
+async def download_model(
     db: Session = Depends(get_db),
     _:  None    = Depends(require_pi),
 ):
-    """Stream the latest approved .eim file to the Pi."""
+    """Stream .eim directly from Edge Impulse to Pi."""
     mv = (
         db.query(ModelVersion)
         .filter(ModelVersion.approved == True, ModelVersion.deployed == True)
         .order_by(ModelVersion.version.desc())
         .first()
     )
-    if not mv or not os.path.exists(mv.eim_path):
-        raise HTTPException(status_code=404, detail="Model file not found on server")
+    if not mv:
+        raise HTTPException(status_code=404, detail="No deployed model")
 
-    return FileResponse(
-        mv.eim_path,
+    # Stream directly from Edge Impulse
+    import httpx
+    from fastapi.responses import StreamingResponse
+    from services.edge_impulse import EI_HEADERS, BASE, PID
+
+    url = f"{BASE}/api/{PID}/deployment/download?type=runner-linux-armv7"
+
+    async def stream():
+        async with httpx.AsyncClient(timeout=300) as client:
+            async with client.stream("GET", url, headers=EI_HEADERS) as resp:
+                async for chunk in resp.aiter_bytes(65536):
+                    yield chunk
+
+    return StreamingResponse(
+        stream(),
         media_type="application/octet-stream",
-        filename=f"v{mv.version}.eim",
+        headers={"Content-Disposition": "attachment; filename=current.eim"}
     )
 
 
