@@ -81,6 +81,6 @@ app.include_router(model.router)
 app.include_router(receipts.router)
 
 
-@app.get("/health")
+@app.get("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
