@@ -126,8 +126,6 @@ async def approve_model(
     mv = db.query(ModelVersion).filter(ModelVersion.id == version_id).first()
     if not mv:
         raise HTTPException(status_code=404, detail="Model version not found")
-    if not mv.eim_path or not os.path.exists(mv.eim_path):
-        raise HTTPException(status_code=400, detail=".eim file not yet downloaded")
 
     # Mark all previous versions as not deployed
     db.query(ModelVersion).filter(ModelVersion.deployed == True).update({"deployed": False})
