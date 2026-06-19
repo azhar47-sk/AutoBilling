@@ -46,7 +46,7 @@ def get_latest_model(
     )
 
 
-@router.get("/model/download")
+@router.get("/download")
 async def download_model(
     db: Session = Depends(get_db),
     _:  None    = Depends(require_pi),
