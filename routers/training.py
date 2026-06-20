@@ -166,19 +166,14 @@ async def _poll_until_done(job_id: str, db: Session):
 
         if result["status"] == "completed":
             accuracy = result.get("accuracy")
-            log.info("Training job %s completed (accuracy=%s)", job_id, accuracy)
 
-            # Explicitly write accuracy back to cache so frontend sees it
-            _job_cache[job_id] = {
-                "status": "completed",
-                "progress": 100,
-                "accuracy": accuracy,
-            }
+            log.info("Retrain completed. Starting build job...")
+            build_job_id = await ei.trigger_train()
+            log.info("Build job started: %s", build_job_id)
 
-            if accuracy is None:
-                log.warning("Job %s completed but accuracy is None — check _fetch_accuracy_result", job_id)
-
+            await _poll_build_until_done(build_job_id)
             await _save_model_version(job_id, accuracy, db)
+
             return
 
     log.error("Gave up polling job %s after 30 minutes", job_id)
