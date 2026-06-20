@@ -204,3 +204,28 @@ async def _save_model_version(job_id: str, accuracy: float | None, db: Session):
     db.add(mv)
     db.commit()
     log.info("Saved ModelVersion v%d", version)
+
+# Retrain model
+@router.post("/retrain")
+async def retrain_all(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    owner_id: int = Depends(require_owner),
+):
+    try:
+        job_id = await ei.trigger_retrain()
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    _job_cache[job_id] = {
+        "status": "queued",
+        "progress": 0,
+        "accuracy": None
+    }
+
+    background_tasks.add_task(_poll_until_done, job_id, db)
+
+    return {
+        "job_id": job_id,
+        "message": "Retraining started"
+    }

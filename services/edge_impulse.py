@@ -352,3 +352,26 @@ def sha256_file(path: str) -> str:
         for chunk in iter(lambda: f.read(65536), b""):
             h.update(chunk)
     return h.hexdigest()
+
+# Retrain Function
+async def trigger_retrain():
+    url = (
+        f"https://studio.edgeimpulse.com/v1/api/"
+        f"{settings.EDGE_IMPULSE_PROJECT_ID}/jobs/retrain"
+    )
+
+    headers = {
+        "x-api-key": settings.EDGE_IMPULSE_API_KEY
+    }
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        response = await client.post(url, headers=headers)
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    if not data.get("success"):
+        raise RuntimeError(f"Retrain failed: {data}")
+
+    return data["id"]
