@@ -357,7 +357,7 @@ def sha256_file(path: str) -> str:
 async def trigger_retrain():
     url = (
         f"https://studio.edgeimpulse.com/v1/api/"
-        f"{settings.EDGE_IMPULSE_PROJECT_ID}/jobs/retrain"
+        f"{PID}/jobs/retrain"
     )
 
     headers = {
