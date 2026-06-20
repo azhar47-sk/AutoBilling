@@ -361,7 +361,7 @@ async def trigger_retrain():
     )
 
     headers = {
-        "x-api-key": settings.EDGE_IMPULSE_API_KEY
+        "x-api-key": settings.EI_API_KEY
     }
 
     async with httpx.AsyncClient(timeout=60) as client:
