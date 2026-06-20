@@ -9,6 +9,7 @@ All Edge Impulse REST API interactions:
 """
 
 import os
+import re
 import logging
 import hashlib
 import asyncio
@@ -355,23 +356,26 @@ def sha256_file(path: str) -> str:
 
 # Retrain Function
 async def trigger_retrain():
-    url = (
-        f"https://studio.edgeimpulse.com/v1/api/"
-        f"{PID}/jobs/retrain"
-    )
-
-    headers = {
-        "x-api-key": settings.EI_API_KEY
-    }
+    url = f"{BASE}/api/{PID}/jobs/retrain"
 
     async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.post(url, headers=headers)
+        response = await client.post(url, headers=EI_HEADERS)
 
     response.raise_for_status()
 
     data = response.json()
 
-    if not data.get("success"):
-        raise RuntimeError(f"Retrain failed: {data}")
+    # Normal case
+    if data.get("success"):
+        return str(data["id"])
 
-    return data["id"]
+    # Job already running → extract existing job ID
+    error = data.get("error", "")
+
+    match = re.search(r"job ID: (\d+)", error)
+    if match:
+        job_id = match.group(1)
+        log.info("Retrain already running, using existing job %s", job_id)
+        return job_id
+
+    raise RuntimeError(f"Retrain failed: {data}")
