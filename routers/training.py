@@ -179,6 +179,29 @@ async def _poll_until_done(job_id: str, db: Session):
     log.error("Gave up polling job %s after 30 minutes", job_id)
     _job_cache[job_id] = {"status": "failed", "progress": 0, "accuracy": None}
 
+async def _poll_build_until_done(job_id: str):
+    """Poll build job until complete."""
+    log.info("Polling build job %s", job_id)
+    for attempt in range(60):  # max 15 minutes
+        await asyncio.sleep(15)
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                from services.edge_impulse import EI_HEADERS, BASE, PID
+                resp = await client.get(
+                    f"{BASE}/api/{PID}/jobs/{job_id}/status",
+                    headers=EI_HEADERS
+                )
+                if resp.status_code == 200:
+                    job = resp.json().get("job", {})
+                    if job.get("finishedSuccessful") is True:
+                        log.info("Build job %s completed", job_id)
+                        return
+                    if job.get("finishedSuccessful") is False:
+                        log.error("Build job %s failed", job_id)
+                        return
+        except Exception as exc:
+            log.warning("Build poll attempt %d failed: %s", attempt, exc)
+
 async def _save_model_version(job_id: str, accuracy: float | None, db: Session):
     """Save ModelVersion metadata — no file download needed."""
     last    = db.query(ModelVersion).order_by(ModelVersion.version.desc()).first()
